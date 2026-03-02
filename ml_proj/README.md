@@ -121,158 +121,182 @@ This system reframes anomaly detection:
 * **Similarity-based confidence estimation over semantic memory.**
 * Vector retrieval acts as the decision layer.
 
-## ⚙️ Unified Setup Guide (Windows / macOS / Linux)
+## ⚙️ Setup Guide
 
-This section covers complete setup for any operating system in one place.
+Follow the steps below to run the AI Pattern Investigator locally.
 
-1️⃣ Prerequisites
+---
 
-Install the following:
+### 1️⃣ Create and Activate Python Virtual Environment
 
-Python 3.9 – 3.11 (must be added to PATH)
+#### Windows
 
-Git
-
-Apache Kafka
-
-2️⃣ Clone the Repository
-git clone <your-repo-url>
-cd <your-repo-folder>
-
-3️⃣ Create Virtual Environment
-Windows
+```bash
 python -m venv venv
 venv\Scripts\activate
-macOS / Linux
-python3 -m venv venv
+```
+
+#### macOS / Linux
+
+```bash
+python -m venv venv
 source venv/bin/activate
+```
 
-You should now see (venv) in your terminal.
+---
 
-4️⃣ Install Dependencies
+### 2️⃣ Install Required Python Packages
 
-If requirements.txt exists:
+Install dependencies from requirements file:
 
+```bash
 pip install -r requirements.txt
+```
 
-Otherwise install manually:
+If `requirements.txt` is missing, install the minimum required packages manually:
 
+```bash
 pip install sentence-transformers kafka-python streamlit pandas numpy scikit-learn
-5️⃣ Kafka Setup
+```
 
-Download Kafka and extract it anywhere on your system.
+---
 
-Start Kafka
-Windows
-bin\windows\zookeeper-server-start.bat config\zookeeper.properties
-bin\windows\kafka-server-start.bat config\server.properties
-macOS / Linux
-bin/zookeeper-server-start.sh config/zookeeper.properties
-bin/kafka-server-start.sh config/server.properties
+### 3️⃣ Configure Environment Variables
 
-If using Kafka 3.5+ (KRaft mode), only the broker needs to be started.
+Example (PowerShell on Windows):
 
-Keep Kafka running in the background.
-
-6️⃣ Configure Environment Variables
-Windows (PowerShell)
+```powershell
 $env:KAFKA_BROKER="localhost:9092"
-$env:KAFKA_TOPIC="logs_stream"
-$env:KAFKA_GROUP_ID="log_consumer_group"
-
 $env:TRACE_PATH="data/raw/Event_traces.csv"
-$env:BASELINE_PATH="outputs/baseline.npy"
-$env:TEXT_BASELINE_PATH="outputs/baseline_text.npy"
-$env:ANOMALIES_DB_PATH="data/anomalies.db"
 $env:LOG_PATH_PATTERN="C:/logs/*.log"
-macOS / Linux
-export KAFKA_BROKER=localhost:9092
-export KAFKA_TOPIC=logs_stream
-export KAFKA_GROUP_ID=log_consumer_group
+```
 
-export TRACE_PATH=data/raw/Event_traces.csv
-export BASELINE_PATH=outputs/baseline.npy
-export TEXT_BASELINE_PATH=outputs/baseline_text.npy
-export ANOMALIES_DB_PATH=data/anomalies.db
-export LOG_PATH_PATTERN="/var/log/*.log"
+Adjust paths and Kafka broker address as needed.
 
-7️⃣ Build Offline Indexes (Required Before Streaming)
-Build HDFS Index
+---
+
+### 4️⃣ Build Offline HDFS Normal Index and Baseline
+
+This step:
+- Loads normal logs  
+- Inserts 80% into the vector database  
+- Uses 20% held-out logs to compute similarity baseline  
+- Saves baseline to `outputs/baseline.npy`
+
+```bash
 python main.py --build_index
+```
 
-This:
+---
 
-Builds vector index of normal logs
+### 5️⃣ Build Offline Text-Log Index and Baseline
 
-Computes similarity distribution
+Reads mostly normal logs (e.g., Windows CBS Info lines), inserts into the vector store, and computes similarity baseline.
 
-Saves baseline.npy
-
-Calibrates anomaly threshold
-
-Build Text Log Index (Optional but Recommended)
+```bash
 python main.py --build_index_text --text_log_path data/text_normals.log
+```
 
-This saves baseline_text.npy.
+---
 
-8️⃣ Start Streaming Detection
+### 6️⃣ Evaluate HDFS Detector (Optional)
 
-Open a new terminal (activate venv again if needed).
+Reports:
+- AUC  
+- Recall  
+- False Positive Rate  
+- Average similarity query latency  
 
-Start Consumer
+```bash
+python main.py --evaluate
+python main.py --evaluate --synthetic
+```
+
+---
+
+### 7️⃣ Start Kafka Consumer + Detector (Live Streaming)
+
+This service:
+- Batches logs  
+- Generates embeddings  
+- Queries vector database  
+- Flags anomalies  
+- Persists detections to SQLite  
+- Updates live metrics  
+
+```bash
 python kafka_cons.py
-Start Producer (Replay CSV)
+```
+
+---
+
+### 8️⃣ Start Kafka Producer (CSV Mode)
+
+Streams HDFS traces into Kafka.  
+Optionally injects synthetic anomalies.
+
+```bash
 python kafka_prod.py --mode csv --trace_path data/raw/Event_traces.csv
-Start Producer (Live Log Files)
-python kafka_prod.py --mode file --log_pattern "<your-log-path-pattern>"
+```
 
-Example:
+---
 
-Windows → C:/logs/*.log
+### 9️⃣ Start Kafka Producer (Live Log File Mode)
 
-Linux → /var/log/*.log
+Tails system log files and streams lines into Kafka.
 
-9️⃣ Launch Dashboard
+```bash
+python kafka_prod.py --mode file --log_pattern "C:/logs/*.log"
+```
+
+---
+
+### 🔟 Start Streamlit Dashboard
+
+Displays:
+- KPIs  
+- Recent detections  
+- Detailed log inspection  
+- “Explain a log” interactive feature  
+
+```bash
 streamlit run dashboard.py
+```
 
-Open in browser:
+---
 
-http://localhost:8501
+### 1️⃣1️⃣ Docker Setup (Optional)
 
-🔄 Recommended Startup Order
+#### Build Containers
 
-Start Kafka (and Zookeeper if required)
+```bash
+docker-compose build
+```
 
-Build HDFS index
+#### Start All Services
 
-Build text index (optional)
+Includes:
+- Embedding + detection service  
+- Vector database  
+- Kafka  
+- Dashboard  
 
-Start consumer
+```bash
+docker-compose up
+```
 
-Start producer
+#### Stop All Services
 
-Launch dashboard
+```bash
+docker-compose down
+```
 
-✅ Verify Setup
+---
 
-You should observe:
+## ✅ You’re Ready
 
-baseline.npy and optionally baseline_text.npy created
-
-data/anomalies.db created
-
-Consumer printing batch metrics
-
-Dashboard showing anomaly KPIs
-
-Once these steps complete successfully, the system is fully operational for:
-
-Offline evaluation
-
-Real-time Kafka-based detection
-
-Persistent anomaly storage
-
-Interactive explanation and monitoring
-
-Your full pipeline is now production-ready across Windows, macOS, and Linux.
+Once running, the system will:
+- Ingest logs  
+- Generate embeddings  
+- Perform real-time similarity search  
+- Detect anomalies  
