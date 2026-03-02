@@ -5,8 +5,14 @@ This fork contains my AI/ML project built using Endee as the core vector databas
 📁 Project Directory: `ml_proj/`  
 📖 Full Documentation: `ml_proj/README.md`
 
-The complete implementation, evaluation scripts, streaming pipeline, and dashboard are located inside the `ml_proj` folder.
 
+The `ml_proj` folder contains:
+
+- End-to-end anomaly detection pipeline implementation
+- Offline evaluation framework (AUC, Recall, FPR, latency benchmarking)
+- Kafka-based real-time streaming detection system
+- Percentile-based similarity thresholding over Endee k-NN retrieval
+- Streamlit monitoring dashboard with live metrics
 ---
 
 # Endee: High-Performance Open Source Vector Database
