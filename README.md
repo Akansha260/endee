@@ -1,3 +1,14 @@
+# 🚀 Candidate Submission – AI Pattern Investigator
+
+This fork contains my AI/ML project built using Endee as the core vector database.
+
+📁 Project Directory: `ml_proj/`  
+📖 Full Documentation: `ml_proj/README.md`
+
+The complete implementation, evaluation scripts, streaming pipeline, and dashboard are located inside the `ml_proj` folder.
+
+---
+
 # Endee: High-Performance Open Source Vector Database
 
 **Endee (nD)** is a specialized, high-performance vector database built for speed and efficiency. This guide covers supported platforms, dependency requirements, and detailed build instructions using both our automated installer and manual CMake configuration.
