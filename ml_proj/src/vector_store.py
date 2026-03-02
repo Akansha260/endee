@@ -1,4 +1,6 @@
 from endee import Endee
+import uuid
+
 
 class VectorStore:
     def __init__(self, index_name="logs_index", dimension=384):
@@ -8,7 +10,6 @@ class VectorStore:
         try:
             self.index = self.client.get_index(index_name)
         except Exception:
-            # If index doesn't exist → create it
             self.client.create_index(
                 name=index_name,
                 dimension=dimension,
@@ -17,13 +18,32 @@ class VectorStore:
             )
             self.index = self.client.get_index(index_name)
 
-    def upsert(self, vec_id, vector, metadata=None):
+    # 🔹 Single query
+    def query(self, vector, top_k=5):
+        response = self.index.query(
+            vector=vector.tolist(),
+            top_k=top_k
+        )
+        return response
+
+    # 🔹 Single upsert (insert/update)
+    def insert(self, vector, metadata):
         data = [{
-            "id": vec_id,
-            "vector": vector,
+            "id": str(uuid.uuid4()),
+            "vector": vector.tolist(),
             "meta": metadata or {}
         }]
         self.index.upsert(data)
 
-    def query(self, vector, top_k=3):
-        return self.index.query(vector=vector, top_k=top_k)
+    # 🔹 Batch query
+    def query_batch(self, vectors, top_k=5):
+        results = []
+        for vec in vectors:
+            res = self.query(vec, top_k=top_k)
+            results.append(res)
+        return results
+
+    # 🔹 Batch insert
+    def insert_batch(self, vectors, metadata_batch):
+        for vec, metadata in zip(vectors, metadata_batch):
+            self.insert(vec, metadata)
